@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 __author__ = "Mauro L."
-__version__ = "0.0.2"
+__version__ = "0.0.23"
 __license__ = "BSD3"
 
 import re
@@ -55,9 +55,10 @@ def choose_user_agent():
 
 class IMDb(HTMLParser):
     TAG = "script"
-    ATTRS = [("type", "application/ld+json")]
+    ATTRS = [('type', 'application/ld+json')]
     FOUND = False
     ONLY_POSTER_URL = False
+    DATA = []
 
     def handle_starttag(self, tag, attrs):
         if tag == self.TAG and attrs == self.ATTRS:
@@ -73,7 +74,7 @@ class IMDb(HTMLParser):
                 data = json.loads(data)
                 data = data.get("image")
 
-            print(data)
+            self.DATA.append (data)
 
     def _url_for(self, imdb_id):
         base = "https://www.imdb.com"
@@ -113,10 +114,11 @@ class IMDb(HTMLParser):
             if response.status == 200:
                 content = response.read().decode("utf-8")
 
-            return self.feed(content)
+            self.feed(content)
+            return ("".join(self.DATA))
 
     def search(self, query):
-        query = query.lower().replace(" ", "-")
+        query = query.lower().replace(" ","-")
         url = f"https://v2.sg.media-imdb.com/suggests/{query[0]}/{query}.json"
         request = urllib.request.Request(url)
         request.add_header("Pragma", "no-cache")
@@ -125,30 +127,26 @@ class IMDb(HTMLParser):
             if response.status == 200:
                 content = response.read().decode("utf-8")
 
-            print(self._clean_suggests(content, query))
+            return self._clean_suggests(content, query)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--search", type=str, nargs="?", default="", help="Search IMDb by string."
-    )
-    parser.add_argument(
-        "--imdb-id", type=str, nargs="?", default="", help="Get IMDb Object by ID."
-    )
+    parser.add_argument("--search", type=str, nargs="?", default="", help="Search IMDb by string.")
+    parser.add_argument("--imdb-id", type=str, nargs="?", default="", help="Get IMDb Object by ID.")
     parser.add_argument(
         "-p",
         "--only-poster-url",
         action="store_true",
-        help="GET just the Movie Poster URL.",
+        help="GET just the Movie Poster URL."
     )
     args = parser.parse_args()
 
     if args.imdb_id or args.search:
         api = IMDb()
         if args.imdb_id:
-            api.GET(args.imdb_id, args.only_poster_url)
+            print (api.GET(args.imdb_id, args.only_poster_url))
         elif args.search:
-            api.search(args.search)
+            print (api.search(args.search))
     else:
         parser.print_help()
